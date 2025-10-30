@@ -1,31 +1,33 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors');
+const cors =require('cors');
 
 const PORT = process.env.PORT || 3001;
 const app = express();
-app.use(cors());
+app.use(cors()); // Note: app.use(cors()) is good, but socket.io needs its *own* config.
 const server = http.createServer(app);
+
+// --- THIS IS THE FIX ---
+
+// 1. PASTE YOUR NETLIFY URL HERE (e.g., "https://jolly-biscuit-123.netlify.app")
+const CLIENT_URL = "https://whiteboard-game.netlify.app/"; 
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    // 2. We now allow *both* localhost and your live Netlify site
+    origin: ["http://localhost:3000", CLIENT_URL],
     methods: ["GET", "POST"]
   }
 });
 
-// --- NEW: SERVER-SIDE STATE ---
-// We will store all room states here
+// --- END OF FIX ---
+
+
+// --- SERVER-SIDE STATE ---
 const rooms = {};
-// rooms will look like:
-// {
-//   "roomName": {
-//     users: ["socketId1", "socketId2"],
-//     currentTurnIndex: 0
-//   }
-// }
-// --- END NEW ---
+// (The rest of your server file is 100% correct, no changes needed)
+// ... (rest of the file) ...
 
 // Helper function to get the current active user in a room
 const getActiveUser = (roomName) => {
@@ -62,7 +64,7 @@ io.on('connection', (socket) => {
     // Store the room name on the socket for later (like disconnect)
     socket.roomName = roomName;
 
-    // --- NEW: Add user to room state ---
+    // --- Add user to room state ---
     if (!rooms[roomName]) {
       // Create room if it doesn't exist
       rooms[roomName] = {
@@ -72,19 +74,19 @@ io.on('connection', (socket) => {
     }
     rooms[roomName].users.push(socket.id);
     console.log(`[SERVER] User ${socket.id} joined room ${roomName}. Total users: ${rooms[roomName].users.length}`);
-
+    
     // Broadcast the new turn state to everyone
     broadcastTurnUpdate(roomName);
-    // --- END NEW ---
+    // --- END ---
   });
 
-  // --- NEW: Listen for a user passing the turn ---
+  // --- Listen for a user passing the turn ---
   socket.on('pass-turn', (data) => {
     const roomName = data.room;
     console.log(`[SERVER] User ${socket.id} passed turn in room ${roomName}`);
     passTurn(roomName);
   });
-  // --- END NEW ---
+  // --- END ---
 
   // --- MODIFIED: Add turn-check security ---
   const handleDrawEvent = (handler) => (data) => {
@@ -123,12 +125,12 @@ io.on('connection', (socket) => {
     const roomName = socket.roomName;
 
     if (rooms[roomName]) {
-      // --- NEW: Remove user from room state ---
+      // --- Remove user from room state ---
       const wasTheirTurn = getActiveUser(roomName) === socket.id;
-
+      
       // Remove user from the array
       rooms[roomName].users = rooms[roomName].users.filter(id => id !== socket.id);
-
+      
       if (rooms[roomName].users.length === 0) {
         // If room is empty, delete it
         delete rooms[roomName];
@@ -153,7 +155,7 @@ io.on('connection', (socket) => {
         }
         broadcastTurnUpdate(roomName); // Still broadcast, user list changed
       }
-      // --- END NEW ---
+      // --- END ---
     }
   });
 });
