@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors =require('cors');
+const cors = require('cors');
 
 const PORT = process.env.PORT || 3001;
 const app = express();
@@ -11,7 +11,7 @@ const server = http.createServer(app);
 // --- THIS IS THE FIX ---
 
 // 1. PASTE YOUR NETLIFY URL HERE (e.g., "https://jolly-biscuit-123.netlify.app")
-const CLIENT_URL = "https://whiteboard-game.netlify.app/"; 
+const CLIENT_URL = "https://whiteboard-game.netlify.app";
 
 const io = new Server(server, {
   cors: {
@@ -74,7 +74,7 @@ io.on('connection', (socket) => {
     }
     rooms[roomName].users.push(socket.id);
     console.log(`[SERVER] User ${socket.id} joined room ${roomName}. Total users: ${rooms[roomName].users.length}`);
-    
+
     // Broadcast the new turn state to everyone
     broadcastTurnUpdate(roomName);
     // --- END ---
@@ -127,10 +127,10 @@ io.on('connection', (socket) => {
     if (rooms[roomName]) {
       // --- Remove user from room state ---
       const wasTheirTurn = getActiveUser(roomName) === socket.id;
-      
+
       // Remove user from the array
       rooms[roomName].users = rooms[roomName].users.filter(id => id !== socket.id);
-      
+
       if (rooms[roomName].users.length === 0) {
         // If room is empty, delete it
         delete rooms[roomName];
